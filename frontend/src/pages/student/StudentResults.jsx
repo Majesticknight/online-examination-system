@@ -1,0 +1,21 @@
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowUpRight, Award, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import api, { errorMessage } from '../../services/api';
+import LoadingState from '../../components/LoadingState';
+import EmptyState from '../../components/EmptyState';
+
+export default function StudentResults() {
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  useEffect(() => { api.get('/student/results').then(({ data }) => setResults(data.results)).catch((error) => toast.error(errorMessage(error))).finally(() => setLoading(false)); }, []);
+  const filtered = useMemo(() => results.filter((result) => result.exam_title.toLowerCase().includes(search.toLowerCase())), [results, search]);
+  const average = results.length ? (results.reduce((sum, result) => sum + Number(result.percentage), 0) / results.length).toFixed(1) : '0.0';
+  const passRate = results.length ? (results.filter((result) => result.passed).length / results.length * 100).toFixed(0) : '0';
+  return <div className="space-y-7"><div><p className="text-sm font-semibold text-brand-600">YOUR PERFORMANCE</p><h1 className="page-title mt-1">My results</h1><p className="page-subtitle">All your completed exams, scores, and answer reviews in one place.</p></div>
+    <div className="grid gap-4 sm:grid-cols-3"><div className="card p-5"><p className="text-sm text-slate-500">Completed exams</p><p className="mt-2 text-2xl font-bold text-slate-900">{results.length}</p></div><div className="card p-5"><p className="text-sm text-slate-500">Average percentage</p><p className="mt-2 text-2xl font-bold text-slate-900">{average}%</p></div><div className="card p-5"><p className="text-sm text-slate-500">Pass rate</p><p className="mt-2 flex items-center gap-2 text-2xl font-bold text-slate-900"><Award size={22} className="text-emerald-600" />{passRate}%</p></div></div>
+    <section className="card overflow-hidden"><div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:px-5"><div><h2 className="font-semibold text-slate-900">Examination history</h2><p className="mt-1 text-xs text-slate-500">{filtered.length} result{filtered.length === 1 ? '' : 's'}</p></div><div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} /><input className="field-input pl-9" placeholder="Search exams…" value={search} onChange={(e) => setSearch(e.target.value)} /></div></div>{loading ? <LoadingState /> : filtered.length ? <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3 font-semibold">Examination</th><th className="px-5 py-3 font-semibold">Score</th><th className="px-5 py-3 font-semibold">Percentage</th><th className="px-5 py-3 font-semibold">Status</th><th className="px-5 py-3 font-semibold">Date</th><th className="px-5 py-3" /></tr></thead><tbody className="divide-y divide-slate-100">{filtered.map((result) => <tr key={result.attempt_id} className="hover:bg-slate-50/70"><td className="px-5 py-4 font-semibold text-slate-800">{result.exam_title}</td><td className="px-5 py-4 text-slate-600">{result.marks_obtained} / {result.total_marks}</td><td className="px-5 py-4 text-slate-600">{result.percentage}%</td><td className="px-5 py-4"><span className={`badge ${result.passed ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{result.passed ? 'Passed' : 'Not passed'}</span></td><td className="px-5 py-4 text-xs text-slate-500">{result.submitted_at ? new Date(result.submitted_at).toLocaleDateString() : '—'}</td><td className="px-5 py-4 text-right"><Link className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:text-brand-700" to={`/student/results/${result.attempt_id}`}>Review <ArrowUpRight size={15} /></Link></td></tr>)}</tbody></table></div> : <EmptyState title={search ? 'No matching results' : 'No results yet'} description={search ? 'Try a different exam title.' : 'Once you complete an exam, your result and answer review will appear here.'} />}</section>
+  </div>;
+}
